@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mini FIFA Touch</title>
+<style>
+body { margin:0; overflow:hidden; background:#0b6623; touch-action:none; }
+canvas { display:block; margin:auto; background:#1e7f3f; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Spieler
+let p1 = {x:100, y:300, r:20, color:"blue"};
+let p2 = {x:canvas.width-100, y:300, r:20, color:"red"};
+
+// Ball
+let ball = {x:canvas.width/2, y:canvas.height/2, r:12, dx:0, dy:0};
+
+// Punkte
+let score1 = 0;
+let score2 = 0;
+
+// Touch Joystick
+let touch = null;
+
+canvas.addEventListener("touchstart", e => {
+  touch = e.touches[0];
+});
+
+canvas.addEventListener("touchmove", e => {
+  touch = e.touches[0];
+});
+
+canvas.addEventListener("touchend", () => {
+  touch = null;
+});
+
+// Sound
+const kickSound = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
+const goalSound = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+
+function resetBall() {
+  ball.x = canvas.width/2;
+  ball.y = canvas.height/2;
+  ball.dx = 0;
+  ball.dy = 0;
+}
+
+function update() {
+  // Touch bewegt Spieler 1
+  if(touch){
+    let dx = touch.clientX - p1.x;
+    let dy = touch.clientY - p1.y;
+    p1.x += dx * 0.1;
+    p1.y += dy * 0.1;
+  }
+
+  // KI Gegner
+  let dx2 = ball.x - p2.x;
+  let dy2 = ball.y - p2.y;
+  p2.x += dx2 * 0.02;
+  p2.y += dy2 * 0.02;
+
+  // Ball Bewegung
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+
+  ball.dx *= 0.99;
+  ball.dy *= 0.99;
+
+  // Kollision
+  [p1,p2].forEach(p => {
+    let dx = ball.x - p.x;
+    let dy = ball.y - p.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+
+    if(dist < p.r + ball.r){
+      ball.dx = dx * 0.25;
+      ball.dy = dy * 0.25;
+      kickSound.play();
+    }
+  });
+
+  // Tore
+  let goalTop = canvas.height/2 - 70;
+  let goalBottom = canvas.height/2 + 70;
+
+  if(ball.x < 20 && ball.y > goalTop && ball.y < goalBottom){
+    score2++;
+    goalSound.play();
+    resetBall();
+  }
+
+  if(ball.x > canvas.width-20 && ball.y > goalTop && ball.y < goalBottom){
+    score1++;
+    goalSound.play();
+    resetBall();
+  }
+}
+
+function drawField(){
+  ctx.strokeStyle = "white";
+
+  // Mittellinie
+  ctx.beginPath();
+  ctx.moveTo(canvas.width/2,0);
+  ctx.lineTo(canvas.width/2,canvas.height);
+  ctx.stroke();
+
+  // Kreis
+  ctx.beginPath();
+  ctx.arc(canvas.width/2, canvas.height/2, 70, 0, Math.PI*2);
+  ctx.stroke();
+
+  // Tore
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, canvas.height/2-70, 10, 140);
+  ctx.fillRect(canvas.width-10, canvas.height/2-70, 10, 140);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawField();
+
+  // Spieler
+  [p1,p2].forEach(p=>{
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // Ball
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.fill();
+
+  // Score
+  ctx.fillStyle="white";
+  ctx.font="30px Arial";
+  ctx.fillText(score1 + " : " + score2, canvas.width/2 - 30, 40);
+
+  // Touch Anzeige (Joystick Punkt)
+  if(touch){
+    ctx.fillStyle="rgba(255,255,255,0.3)";
+    ctx.beginPath();
+    ctx.arc(touch.clientX, touch.clientY, 30, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
